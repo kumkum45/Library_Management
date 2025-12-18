@@ -1,6 +1,6 @@
 from flask import app, jsonify, request, session, session
 from sqlalchemy import or_
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker,joinedload
 from database import engine
 from models import Base
 from models import Book, Author, User, IssuedBook
@@ -16,18 +16,50 @@ def register_routes(app):
     from sqlalchemy import or_
 
 # 🔍 Search OR return all books
-    @app.route("/books", methods=["GET"])
-    def get_books():
+    @app.route("/books/search", defaults={"search_param": None}, methods=["GET"])
+    @app.route("/books/search/<search_param>", methods=["GET"])
+    def search_books(search_param):
         session = SessionLocal()
-        books = session.query(Book).all()
+
+        # Start base query
+        query = session.query(Book).options(joinedload(Book.author))
+
+        # Apply search_param if provided
+        if search_param:
+            if search_param.isdigit():  # numeric → book ID
+                query = query.filter(Book.id == int(search_param))
+            else:  # string → book title (case-insensitive)
+                query = query.filter(Book.title.ilike(f"%{search_param}%"))
+
+        # Optional query params
+        category = request.args.get("category")
+        status = request.args.get("status")
+
+        if category:
+            query = query.filter(Book.category.ilike(f"%{category}%"))
+        if status:
+            query = query.filter(Book.status.ilike(f"%{status}%"))
+
+        books = query.all()
+
+        if not books:
+            session.close()
+            return jsonify({"message": "No books found"}), 404
+
         result = [
-            {"id": b.id, "title": b.title, "category": b.category,
-             "status": b.status, "author": b.author.name}
+            {
+                "id": b.id,
+                "title": b.title,
+                "category": b.category,
+                "status": b.status,
+                "author_id": b.author_id,
+                "author_name": b.author.name if b.author else None
+            }
             for b in books
         ]
+
         session.close()
         return jsonify(result)
-
     
 
     @app.route("/books", methods=["POST"])
