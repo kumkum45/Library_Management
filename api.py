@@ -1,6 +1,7 @@
 from flask import app, jsonify, request, session, session
 from sqlalchemy import or_
 from sqlalchemy.orm import sessionmaker,joinedload
+from sqlalchemy.exc import IntegrityError
 from database import engine
 from models import Base
 from models import Book, Author, User, IssuedBook
@@ -137,11 +138,11 @@ def register_routes(app):
 
         query = session.query(User).options(joinedload(User.issued_books))
 
-        # Filter by ID if provided
+        
         if user_id is not None:
             query = query.filter(User.id == user_id)
 
-        # Filter by role from URL or query param
+        
         role_param = role or request.args.get("role")
         if role_param:
             if role_param.lower() not in ("user", "admin"):
@@ -149,7 +150,7 @@ def register_routes(app):
                 return jsonify({"error": "Invalid role. Must be 'user' or 'admin'"}), 400
             query = query.filter(User.role == role_param.lower())
 
-        # Optional search by name or email via query params
+       
         name = request.args.get("name")
         email = request.args.get("email")
 
@@ -182,4 +183,46 @@ def register_routes(app):
 
 
 
-   
+    @app.route("/users/<int:user_id>", methods=["DELETE"])
+    def delete_user(user_id):
+        session = SessionLocal()
+
+        user = session.get(User, user_id)
+        if not user:
+            session.close()
+            return jsonify({"message": "User not found"}), 404
+
+        session.delete(user)
+        session.commit()
+        session.close()
+
+        return jsonify({"message": f"User with id {user_id} deleted successfully!"})
+    
+
+
+    @app.route("/users", methods=["POST"])
+    def add_user():
+        data = request.get_json()
+        session = SessionLocal()
+        name = data.get("name")
+        email = data.get("email")
+        role = data.get("role", "user").lower()  
+        if not name or not email:
+            session.close()
+            return jsonify({"error": "Name and email are required"}), 400
+        if role not in ("user", "admin"):
+            session.close()
+            return jsonify({"error": "Invalid role. Must be 'user' or 'admin'"}), 400
+
+        new_user = User(name=name, email=email, role=role)
+
+        session.add(new_user)
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            session.close()
+            return jsonify({"error": "Email already exists"}), 400
+
+        session.close()
+        return jsonify({"message": "User added successfully!"})
