@@ -14,24 +14,22 @@ def register_routes(app):
 
 
     from sqlalchemy import or_
-
-# 🔍 Search OR return all books
     @app.route("/books/search", defaults={"search_param": None}, methods=["GET"])
     @app.route("/books/search/<search_param>", methods=["GET"])
     def search_books(search_param):
         session = SessionLocal()
 
-        # Start base query
+        
         query = session.query(Book).options(joinedload(Book.author))
 
-        # Apply search_param if provided
+        
         if search_param:
-            if search_param.isdigit():  # numeric → book ID
+            if search_param.isdigit():  
                 query = query.filter(Book.id == int(search_param))
-            else:  # string → book title (case-insensitive)
+            else:  
                 query = query.filter(Book.title.ilike(f"%{search_param}%"))
 
-        # Optional query params
+        
         category = request.args.get("category")
         status = request.args.get("status")
 
@@ -82,7 +80,7 @@ def register_routes(app):
     def delete_book(book_id):
         session = SessionLocal()
     
-    # Find book by id
+    
         book = session.query(Book).get(book_id)
         if not book:
            session.close()
@@ -130,6 +128,58 @@ def register_routes(app):
         session.close()
         return jsonify({"message": f"Author with id {author_id} deleted successfully!"})
     
-    
-    Base.metadata.create_all(bind=engine)
+
+    @app.route("/users", defaults={"user_id": None, "role": None}, methods=["GET"])
+    @app.route("/users/<int:user_id>", defaults={"role": None}, methods=["GET"])
+    @app.route("/users/role/<role>", defaults={"user_id": None}, methods=["GET"])
+    def search_users(user_id, role):
+        session = SessionLocal()
+
+        query = session.query(User).options(joinedload(User.issued_books))
+
+        # Filter by ID if provided
+        if user_id is not None:
+            query = query.filter(User.id == user_id)
+
+        # Filter by role from URL or query param
+        role_param = role or request.args.get("role")
+        if role_param:
+            if role_param.lower() not in ("user", "admin"):
+                session.close()
+                return jsonify({"error": "Invalid role. Must be 'user' or 'admin'"}), 400
+            query = query.filter(User.role == role_param.lower())
+
+        # Optional search by name or email via query params
+        name = request.args.get("name")
+        email = request.args.get("email")
+
+        if name:
+            query = query.filter(User.name.ilike(f"%{name}%"))
+        if email:
+            query = query.filter(User.email.ilike(f"%{email}%"))
+
+        users = query.all()
+
+        if not users:
+            session.close()
+            return jsonify({"message": "No users found"}), 404
+
+        result = [
+            {
+                "id": u.id,
+                "name": u.name,
+                "email": u.email,
+                "role": u.role,
+                "issued_books": [
+                    {"id": b.id, "book_name": b.book_name} for b in u.issued_books
+                ]
+            }
+            for u in users
+        ]
+
+        session.close()
+        return jsonify(result)
+
+
+
    
