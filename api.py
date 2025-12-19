@@ -1,7 +1,7 @@
-from flask import app, jsonify, request, session, session
-from sqlalchemy import or_
+from flask import jsonify, request
 from sqlalchemy.orm import sessionmaker,joinedload
 from sqlalchemy.exc import IntegrityError
+from auth.token import token_required, hash_password
 from database import engine
 from models import Base
 from models import Book, Author, User, IssuedBook
@@ -19,15 +19,12 @@ def register_routes(app):
     @app.route("/books/search/<search_param>", defaults={"category": None, "status": None, "author": None}, methods=["GET"])
     @app.route("/books/search/<search_param>/<category>", defaults={"status": None, "author": None}, methods=["GET"])
     @app.route("/books/search/<search_param>/<category>/<status>", defaults={"author": None}, methods=["GET"])
-    @app.route("/books/search/<search_param>/<author>", methods=["GET"])
+    @app.route("/books/search/<search_param>/<category>/<status>/<author>", methods=["GET"])
     def search_books(search_param, category, status, author):
         session = SessionLocal()
 
         
         query = session.query(Book).options(joinedload(Book.author))
-        category = request.args.get("category")
-        status = request.args.get("status")
-        author = request.args.get("author")
         if search_param:
             sp = search_param.strip()
             if sp.lower() == "all":
@@ -68,15 +65,29 @@ def register_routes(app):
     
 
     @app.route("/books", methods=["POST"])
+    @token_required
     def add_book():
-        data = request.get_json()
+        data = request.get_json() or {}
         session = SessionLocal()
+
+        title = data.get("title")
+        category = data.get("category")
+        author_id = data.get("author_id")
+        isbn = data.get("isbn")
+
+        if not title or not category or not author_id or not isbn:
+            session.close()
+            return jsonify({"error": "title, category, author_id, and isbn are required"}), 400
+
         new_book = Book(
-            title=data["title"],
-            category=data["category"],
-            author_id=data["author_id"],
-            isbn=data["isbn"]
+            title=title,
+            category=category,
+            author_id=author_id,
+            isbn=isbn
         )
+        # Allow optional status override if provided
+        if data.get("status"):
+            new_book.status = data.get("status")
         session.add(new_book)
         session.commit()
         session.close()
@@ -84,6 +95,7 @@ def register_routes(app):
     
 
     @app.route("/books/<int:book_id>", methods=["DELETE"])
+    @token_required
     def delete_book(book_id):
         session = SessionLocal()
     
@@ -110,6 +122,7 @@ def register_routes(app):
         return jsonify(result)
     
     @app.route("/authors", methods=["POST"])
+    @token_required
     def add_author():
         data = request.get_json()
         session = SessionLocal()
@@ -123,6 +136,7 @@ def register_routes(app):
         return jsonify({"message": "Author added successfully!"})
     
     @app.route("/authors/<int:author_id>", methods=["DELETE"])
+    @token_required
     def delete_author(author_id):
         session = SessionLocal()
         author = session.query(Author).get(author_id)
@@ -190,6 +204,7 @@ def register_routes(app):
 
 
     @app.route("/users/<int:user_id>", methods=["DELETE"])
+    @token_required
     def delete_user(user_id):
         session = SessionLocal()
 
@@ -207,20 +222,24 @@ def register_routes(app):
 
 
     @app.route("/users", methods=["POST"])
+    @token_required
     def add_user():
         data = request.get_json()
         session = SessionLocal()
         name = data.get("name")
         email = data.get("email")
-        role = data.get("role", "user").lower()  
-        if not name or not email:
+        password = data.get("password")
+        role = data.get("role", "user").lower()
+
+        if not name or not email or not password:
             session.close()
-            return jsonify({"error": "Name and email are required"}), 400
+            return jsonify({"error": "Name, email and password are required"}), 400
         if role not in ("user", "admin"):
             session.close()
             return jsonify({"error": "Invalid role. Must be 'user' or 'admin'"}), 400
 
-        new_user = User(name=name, email=email, role=role)
+        pw_hash = hash_password(password)
+        new_user = User(name=name, email=email, password=pw_hash, role=role)
 
         session.add(new_user)
         try:
@@ -234,13 +253,12 @@ def register_routes(app):
         return jsonify({"message": "User added successfully!"})
 
 
-    # Issued books endpoints
     @app.route("/issued_books", methods=["GET"])
+    @token_required
     def list_issued_books():
         session = SessionLocal()
         query = session.query(IssuedBook).options(joinedload(IssuedBook.book), joinedload(IssuedBook.user))
 
-        # optional filters
         user_id = request.args.get("user_id")
         book_id = request.args.get("book_id")
         status = request.args.get("status")
@@ -273,6 +291,7 @@ def register_routes(app):
 
 
     @app.route("/issued_books/<int:issue_id>", methods=["GET"])
+    @token_required
     def get_issued_book(issue_id):
         session = SessionLocal()
         issued = session.query(IssuedBook).options(joinedload(IssuedBook.book), joinedload(IssuedBook.user)).get(issue_id)
@@ -293,6 +312,7 @@ def register_routes(app):
 
 
     @app.route("/issued_books", methods=["POST"])
+    @token_required
     def create_issued_book():
         data = request.get_json()
         session = SessionLocal()
@@ -303,7 +323,6 @@ def register_routes(app):
             session.close()
             return jsonify({"error": "book_id and user_id are required"}), 400
 
-        # simple validations
         book = session.get(Book, book_id)
         user = session.get(User, user_id)
         if not book:
@@ -317,7 +336,6 @@ def register_routes(app):
             return jsonify({"error": "Book not available"}), 400
 
         issued = IssuedBook(book_id=book_id, user_id=user_id, status="issued")
-        # mark book as issued
         book.status = "issued"
         session.add(issued)
         session.commit()
@@ -327,29 +345,8 @@ def register_routes(app):
         return jsonify(result), 201
 
 
-    @app.route("/issued_books/<int:issue_id>/return", methods=["POST"])
-    def return_issued_book(issue_id):
-        session = SessionLocal()
-        issued = session.query(IssuedBook).get(issue_id)
-        if not issued:
-            session.close()
-            return jsonify({"message": "Issued record not found"}), 404
-        if issued.status == "returned":
-            session.close()
-            return jsonify({"message": "Book already returned"}), 400
-
-        issued.status = "returned"
-        # mark book as available
-        book = session.get(Book, issued.book_id)
-        if book:
-            book.status = "available"
-
-        session.commit()
-        session.close()
-        return jsonify({"message": "Book returned successfully"})
-
-
     @app.route("/issued_books/<int:issue_id>", methods=["DELETE"])
+    @token_required
     def delete_issued_book(issue_id):
         session = SessionLocal()
         issued = session.query(IssuedBook).get(issue_id)
