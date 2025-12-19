@@ -6,7 +6,7 @@ from database import engine
 from models import Base
 from models import Book, Author, User, IssuedBook
 SessionLocal = sessionmaker(bind=engine)
-
+ 
 def register_routes(app):
     @app.route("/")
     def index():
@@ -15,29 +15,41 @@ def register_routes(app):
 
 
     from sqlalchemy import or_
-    @app.route("/books/search", defaults={"search_param": None}, methods=["GET"])
-    @app.route("/books/search/<search_param>", methods=["GET"])
-    def search_books(search_param):
+    @app.route("/books/search", defaults={"search_param": None, "category": None, "status": None, "author": None}, methods=["GET"])
+    @app.route("/books/search/<search_param>", defaults={"category": None, "status": None, "author": None}, methods=["GET"])
+    @app.route("/books/search/<search_param>/<category>", defaults={"status": None, "author": None}, methods=["GET"])
+    @app.route("/books/search/<search_param>/<category>/<status>", defaults={"author": None}, methods=["GET"])
+    @app.route("/books/search/<search_param>/<category>/<status>/<author>", methods=["GET"])
+    def search_books(search_param, category, status, author):
         session = SessionLocal()
 
         
         query = session.query(Book).options(joinedload(Book.author))
-
-        
-        if search_param:
-            if search_param.isdigit():  
-                query = query.filter(Book.id == int(search_param))
-            else:  
-                query = query.filter(Book.title.ilike(f"%{search_param}%"))
-
-        
         category = request.args.get("category")
         status = request.args.get("status")
+        author = request.args.get("author")
 
+        # Path param behavior:
+        # - /books/search/all         -> no title/id filter (other query params still apply)
+        # - /books/search/<digits>    -> filter by id
+        # - /books/search/<text>      -> filter by title (ilike)
+        if search_param:
+            sp = search_param.strip()
+            if sp.lower() == "all":
+                pass
+            elif sp.isdigit():
+                query = query.filter(Book.id == int(sp))
+            else:
+                query = query.filter(Book.title.ilike(f"%{sp}%"))
+
+        # Additional query param filters (apply regardless of path param)
         if category:
             query = query.filter(Book.category.ilike(f"%{category}%"))
         if status:
             query = query.filter(Book.status.ilike(f"%{status}%"))
+        if author:
+            # filter by related author's name
+            query = query.join(Author).filter(Author.name.ilike(f"%{author}%"))
 
         books = query.all()
 
