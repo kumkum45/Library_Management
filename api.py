@@ -19,7 +19,7 @@ def register_routes(app):
     @app.route("/books/search/<search_param>", defaults={"category": None, "status": None, "author": None}, methods=["GET"])
     @app.route("/books/search/<search_param>/<category>", defaults={"status": None, "author": None}, methods=["GET"])
     @app.route("/books/search/<search_param>/<category>/<status>", defaults={"author": None}, methods=["GET"])
-    @app.route("/books/search/<search_param>/<category>/<status>/<author>", methods=["GET"])
+    @app.route("/books/search/<search_param>/<author>", methods=["GET"])
     def search_books(search_param, category, status, author):
         session = SessionLocal()
 
@@ -28,11 +28,6 @@ def register_routes(app):
         category = request.args.get("category")
         status = request.args.get("status")
         author = request.args.get("author")
-
-        # Path param behavior:
-        # - /books/search/all         -> no title/id filter (other query params still apply)
-        # - /books/search/<digits>    -> filter by id
-        # - /books/search/<text>      -> filter by title (ilike)
         if search_param:
             sp = search_param.strip()
             if sp.lower() == "all":
@@ -42,13 +37,12 @@ def register_routes(app):
             else:
                 query = query.filter(Book.title.ilike(f"%{sp}%"))
 
-        # Additional query param filters (apply regardless of path param)
+       
         if category:
             query = query.filter(Book.category.ilike(f"%{category}%"))
         if status:
             query = query.filter(Book.status.ilike(f"%{status}%"))
         if author:
-            # filter by related author's name
             query = query.join(Author).filter(Author.name.ilike(f"%{author}%"))
 
         books = query.all()
@@ -238,3 +232,135 @@ def register_routes(app):
 
         session.close()
         return jsonify({"message": "User added successfully!"})
+
+
+    # Issued books endpoints
+    @app.route("/issued_books", methods=["GET"])
+    def list_issued_books():
+        session = SessionLocal()
+        query = session.query(IssuedBook).options(joinedload(IssuedBook.book), joinedload(IssuedBook.user))
+
+        # optional filters
+        user_id = request.args.get("user_id")
+        book_id = request.args.get("book_id")
+        status = request.args.get("status")
+
+        if user_id and user_id.isdigit():
+            query = query.filter(IssuedBook.user_id == int(user_id))
+        if book_id and book_id.isdigit():
+            query = query.filter(IssuedBook.book_id == int(book_id))
+        if status:
+            query = query.filter(IssuedBook.status.ilike(f"%{status}%"))
+
+        issued = query.all()
+        if not issued:
+            session.close()
+            return jsonify({"message": "No issued books found"}), 404
+
+        result = [
+            {
+                "id": i.id,
+                "book_id": i.book_id,
+                "book_title": i.book.title if i.book else None,
+                "user_id": i.user_id,
+                "user_name": i.user.name if i.user else None,
+                "status": i.status
+            }
+            for i in issued
+        ]
+        session.close()
+        return jsonify(result)
+
+
+    @app.route("/issued_books/<int:issue_id>", methods=["GET"])
+    def get_issued_book(issue_id):
+        session = SessionLocal()
+        issued = session.query(IssuedBook).options(joinedload(IssuedBook.book), joinedload(IssuedBook.user)).get(issue_id)
+        if not issued:
+            session.close()
+            return jsonify({"message": "Issued record not found"}), 404
+
+        result = {
+            "id": issued.id,
+            "book_id": issued.book_id,
+            "book_title": issued.book.title if issued.book else None,
+            "user_id": issued.user_id,
+            "user_name": issued.user.name if issued.user else None,
+            "status": issued.status
+        }
+        session.close()
+        return jsonify(result)
+
+
+    @app.route("/issued_books", methods=["POST"])
+    def create_issued_book():
+        data = request.get_json()
+        session = SessionLocal()
+        book_id = data.get("book_id")
+        user_id = data.get("user_id")
+
+        if not book_id or not user_id:
+            session.close()
+            return jsonify({"error": "book_id and user_id are required"}), 400
+
+        # simple validations
+        book = session.get(Book, book_id)
+        user = session.get(User, user_id)
+        if not book:
+            session.close()
+            return jsonify({"error": "Book not found"}), 404
+        if not user:
+            session.close()
+            return jsonify({"error": "User not found"}), 404
+        if book.status != "available":
+            session.close()
+            return jsonify({"error": "Book not available"}), 400
+
+        issued = IssuedBook(book_id=book_id, user_id=user_id, status="issued")
+        # mark book as issued
+        book.status = "issued"
+        session.add(issued)
+        session.commit()
+
+        result = {"message": "Book issued successfully", "issued_id": issued.id}
+        session.close()
+        return jsonify(result), 201
+
+
+    @app.route("/issued_books/<int:issue_id>/return", methods=["POST"])
+    def return_issued_book(issue_id):
+        session = SessionLocal()
+        issued = session.query(IssuedBook).get(issue_id)
+        if not issued:
+            session.close()
+            return jsonify({"message": "Issued record not found"}), 404
+        if issued.status == "returned":
+            session.close()
+            return jsonify({"message": "Book already returned"}), 400
+
+        issued.status = "returned"
+        # mark book as available
+        book = session.get(Book, issued.book_id)
+        if book:
+            book.status = "available"
+
+        session.commit()
+        session.close()
+        return jsonify({"message": "Book returned successfully"})
+
+
+    @app.route("/issued_books/<int:issue_id>", methods=["DELETE"])
+    def delete_issued_book(issue_id):
+        session = SessionLocal()
+        issued = session.query(IssuedBook).get(issue_id)
+        if not issued:
+            session.close()
+            return jsonify({"message": "Issued record not found"}), 404
+
+        session.delete(issued)
+        session.commit()
+        session.close()
+        return jsonify({"message": f"Issued record {issue_id} deleted"})
+    
+
+    
