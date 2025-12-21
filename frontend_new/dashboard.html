@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | Library Management System</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <!-- Top Navbar -->
+  <nav class="navbar">
+    <div class="navbar__left">
+      <div class="navbar__logo">📚 Library System</div>
+    </div>
+
+    <div class="navbar__center">
+      <div class="search-bar">
+        <input 
+          type="text" 
+          id="globalSearch" 
+          class="search-bar__input" 
+          placeholder="Search books, authors..."
+        >
+        <button class="search-bar__btn" aria-label="Search">🔍</button>
+      </div>
+    </div>
+
+    <div class="navbar__right">
+      <div class="dropdown">
+        <button class="dropdown__trigger" aria-haspopup="true" aria-expanded="false">
+          ≡ Menu
+        </button>
+        <ul class="dropdown__menu" role="menu" style="display: none;">
+          <li><a href="#" class="dropdown__item" data-section="books">📖 Books</a></li>
+          <li><a href="#" class="dropdown__item" data-section="issued">📤 Issued Books</a></li>
+          <li><a href="#" class="dropdown__item" data-section="users">👥 Users</a></li>
+        </ul>
+      </div>
+
+      <div class="profile-menu">
+        <button class="profile-btn" id="profileBtn" aria-haspopup="true">
+          <span class="profile-icon">👤</span>
+          <span class="profile-name" id="profileName">User</span>
+        </button>
+        <ul class="profile-dropdown" id="profileDropdown" role="menu" style="display: none;">
+          <li><a href="#" class="profile-item" id="viewProfile">👤 View Profile</a></li>
+          <li><a href="#" class="profile-item" id="logoutBtn">🚪 Logout</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="dashboard">
+    <!-- Books Section -->
+    <section id="booksSection" class="section active" style="display: block;">
+      <h2 class="section__title">📖 Search Books</h2>
+      
+      <div class="filters">
+        <div class="filter-group">
+          <label for="filterBookName" class="filter-label">Book Name</label>
+          <input 
+            type="text" 
+            id="filterBookName" 
+            class="filter-input" 
+            placeholder="e.g., Clean Code"
+          >
+        </div>
+
+        <div class="filter-group">
+          <label for="filterAuthor" class="filter-label">Author Name</label>
+          <input 
+            type="text" 
+            id="filterAuthor" 
+            class="filter-input" 
+            placeholder="e.g., Robert C. Martin"
+          >
+        </div>
+
+        <div class="filter-group">
+          <label for="filterCategory" class="filter-label">Category</label>
+          <input 
+            type="text" 
+            id="filterCategory" 
+            class="filter-input" 
+            placeholder="e.g., Programming"
+          >
+        </div>
+
+        <div class="filter-group">
+          <label for="filterStatus" class="filter-label">Status</label>
+          <select id="filterStatus" class="filter-input">
+            <option value="">All</option>
+            <option value="available">Available</option>
+            <option value="issued">Issued</option>
+          </select>
+        </div>
+
+        <button class="btn-search" id="searchBooksBtn">Search</button>
+        <button class="btn-reset" id="resetBooksBtn">Reset</button>
+      </div>
+
+      <div id="booksResults" class="results">
+        <div class="loading" style="display: none;">Loading...</div>
+        <div class="empty-state" style="display: none;">
+          <p>No books found. Try adjusting your filters.</p>
+        </div>
+        <div id="booksTable" class="table-container"></div>
+      </div>
+    </section>
+
+    <!-- Issued Books Section -->
+    <section id="issuedSection" class="section" style="display: none;">
+      <h2 class="section__title">📤 Issued Books</h2>
+      
+      <div id="issuedResults" class="results">
+        <div class="loading" style="display: none;">Loading...</div>
+        <div class="empty-state" style="display: none;">
+          <p>No issued books found.</p>
+        </div>
+        <div id="issuedTable" class="table-container"></div>
+      </div>
+    </section>
+
+    <!-- Users Section -->
+    <section id="usersSection" class="section" style="display: none;">
+      <h2 class="section__title">👥 Users</h2>
+      
+      <div id="usersResults" class="results">
+        <div class="loading" style="display: none;">Loading...</div>
+        <div class="empty-state" style="display: none;">
+          <p>No users found.</p>
+        </div>
+        <div id="usersTable" class="table-container"></div>
+      </div>
+    </section>
+
+    <!-- User Details Modal -->
+    <div id="userDetailModal" class="modal" style="display: none;">
+      <div class="modal__content">
+        <button class="modal__close" id="closeModal">&times;</button>
+        <h3 class="modal__title" id="userDetailTitle">User Details</h3>
+        <div id="userDetailBody" class="modal__body"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
