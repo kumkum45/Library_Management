@@ -1,0 +1,7 @@
+Flask
+SQLAlchemy
+psycopg2-binary
+Werkzeug
+PyJWT
+python-dotenv
+flask-cors
