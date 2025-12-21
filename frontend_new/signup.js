@@ -11,11 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clearErrors();
 
     if (validateForm()) {
-      showSuccess();
-      form.reset();
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 2000);
+      sendSignupData();
     }
   });
 
@@ -132,5 +128,58 @@ document.addEventListener('DOMContentLoaded', () => {
   function showSuccess() {
     form.style.display = 'none';
     successMessage.classList.add('show');
+  }
+
+  function sendSignupData() {
+    const name = nameInput.value.trim();
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    const role = roleInput.value;
+
+    const signupData = {
+      name: name,
+      email: email,
+      password: password,
+      role: role
+    };
+
+    const apiUrl = window.location.protocol === 'file:' 
+      ? 'http://127.0.0.1:5000/signup'
+      : `${window.location.protocol}//${window.location.hostname}:5000/signup`;
+
+    console.log('Sending signup to:', apiUrl);
+    console.log('Data:', signupData);
+
+    fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(signupData)
+    })
+    .then(response => {
+      console.log('Response status:', response.status);
+      if (!response.ok) {
+        return response.json().then(data => {
+          throw new Error(data.error || `HTTP ${response.status}: Signup failed`);
+        });
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Signup successful:', data);
+      showSuccess();
+      form.reset();
+      setTimeout(() => {
+        window.location.href = 'login.html';
+      }, 2000);
+    })
+    .catch(error => {
+      console.error('Signup error:', error);
+      const emailError = document.getElementById('emailError');
+      emailError.textContent = error.message || 'Failed to connect to server';
+      emailError.classList.add('show');
+      emailInput.parentElement.classList.add('error');
+    });
   }
 });
