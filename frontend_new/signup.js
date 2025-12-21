@@ -6,151 +6,122 @@ document.addEventListener('DOMContentLoaded', () => {
   const roleInput = document.getElementById('role');
   const successMessage = document.getElementById('successMessage');
 
+  // Form submission
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    clearErrors();
-
+    clearAllErrors();
+    
     if (validateForm()) {
-      sendSignupData();
+      submitSignup();
     }
   });
 
-  nameInput.addEventListener('blur', () => validateName());
-  emailInput.addEventListener('blur', () => validateEmail());
-  passwordInput.addEventListener('blur', () => validatePassword());
-  roleInput.addEventListener('blur', () => validateRole());
+  // Real-time validation on blur
+  nameInput.addEventListener('blur', validateName);
+  emailInput.addEventListener('blur', validateEmail);
+  passwordInput.addEventListener('blur', validatePassword);
+  roleInput.addEventListener('blur', validateRole);
 
-  function validateForm() {
-    let isValid = true;
-
-    if (!validateName()) isValid = false;
-    if (!validateEmail()) isValid = false;
-    if (!validatePassword()) isValid = false;
-    if (!validateRole()) isValid = false;
-
-    return isValid;
-  }
-
+  // Validation functions
   function validateName() {
-    const nameError = document.getElementById('nameError');
-    const nameGroup = nameInput.parentElement;
     const name = nameInput.value.trim();
-
-    if (name.length === 0) {
-      showError(nameError, 'Name is required', nameGroup);
+    const nameError = document.getElementById('nameError');
+    
+    if (!name) {
+      showError(nameError, nameInput, 'Full name is required');
       return false;
     }
-
     if (name.length < 2) {
-      showError(nameError, 'Name must be at least 2 characters', nameGroup);
+      showError(nameError, nameInput, 'Name must be at least 2 characters');
       return false;
     }
-
-    clearError(nameError, nameGroup);
+    clearError(nameError, nameInput);
     return true;
   }
 
   function validateEmail() {
-    const emailError = document.getElementById('emailError');
-    const emailGroup = emailInput.parentElement;
     const email = emailInput.value.trim();
+    const emailError = document.getElementById('emailError');
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (email.length === 0) {
-      showError(emailError, 'Email is required', emailGroup);
+    
+    if (!email) {
+      showError(emailError, emailInput, 'Email is required');
       return false;
     }
-
     if (!emailRegex.test(email)) {
-      showError(emailError, 'Please enter a valid email address', emailGroup);
+      showError(emailError, emailInput, 'Please enter a valid email address');
       return false;
     }
-
-    clearError(emailError, emailGroup);
+    clearError(emailError, emailInput);
     return true;
   }
 
   function validatePassword() {
-    const passwordError = document.getElementById('passwordError');
-    const passwordGroup = passwordInput.parentElement;
     const password = passwordInput.value;
-
-    if (password.length === 0) {
-      showError(passwordError, 'Password is required', passwordGroup);
+    const passwordError = document.getElementById('passwordError');
+    
+    if (!password) {
+      showError(passwordError, passwordInput, 'Password is required');
       return false;
     }
-
     if (password.length < 6) {
-      showError(passwordError, 'Password must be at least 6 characters', passwordGroup);
+      showError(passwordError, passwordInput, 'Password must be at least 6 characters');
       return false;
     }
-
-    clearError(passwordError, passwordGroup);
+    clearError(passwordError, passwordInput);
     return true;
   }
 
   function validateRole() {
-    const roleError = document.getElementById('roleError');
-    const roleGroup = roleInput.parentElement;
     const role = roleInput.value;
-
-    if (role.length === 0) {
-      showError(roleError, 'Please select a role', roleGroup);
+    const roleError = document.getElementById('roleError');
+    
+    if (!role) {
+      showError(roleError, roleInput, 'Please select a role');
       return false;
     }
-
-    clearError(roleError, roleGroup);
+    clearError(roleError, roleInput);
     return true;
   }
 
-  function showError(element, message, groupElement) {
-    element.textContent = message;
-    element.classList.add('show');
-    groupElement.classList.add('error');
+  function validateForm() {
+    return validateName() && validateEmail() && validatePassword() && validateRole();
   }
 
-  function clearError(element, groupElement) {
-    element.textContent = '';
-    element.classList.remove('show');
-    groupElement.classList.remove('error');
+  function showError(errorElement, inputElement, message) {
+    errorElement.textContent = message;
+    errorElement.classList.add('show');
+    inputElement.classList.add('error');
   }
 
-  function clearErrors() {
-    document.querySelectorAll('.error-message').forEach(msg => {
-      msg.textContent = '';
-      msg.classList.remove('show');
+  function clearError(errorElement, inputElement) {
+    errorElement.textContent = '';
+    errorElement.classList.remove('show');
+    inputElement.classList.remove('error');
+  }
+
+  function clearAllErrors() {
+    document.querySelectorAll('.error-message').forEach(el => {
+      el.textContent = '';
+      el.classList.remove('show');
     });
-    document.querySelectorAll('.form-group').forEach(group => {
-      group.classList.remove('error');
+    document.querySelectorAll('input, select').forEach(el => {
+      el.classList.remove('error');
     });
   }
 
-  function showSuccess() {
-    form.style.display = 'none';
-    successMessage.classList.add('show');
-  }
-
-  function sendSignupData() {
-    const name = nameInput.value.trim();
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
-    const role = roleInput.value;
-
+  // Submit signup data to backend
+  function submitSignup() {
     const signupData = {
-      name: name,
-      email: email,
-      password: password,
-      role: role
+      name: nameInput.value.trim(),
+      email: emailInput.value.trim(),
+      password: passwordInput.value,
+      role: roleInput.value
     };
 
-    const apiUrl = window.location.protocol === 'file:' 
-      ? 'http://127.0.0.1:5000/signup'
-      : `${window.location.protocol}//${window.location.hostname}:5000/signup`;
+    const backendUrl = 'http://127.0.0.1:5000/signup';
 
-    console.log('Sending signup to:', apiUrl);
-    console.log('Data:', signupData);
-
-    fetch(apiUrl, {
+    fetch(backendUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -158,28 +129,29 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify(signupData)
     })
     .then(response => {
-      console.log('Response status:', response.status);
       if (!response.ok) {
-        return response.json().then(data => {
-          throw new Error(data.error || `HTTP ${response.status}: Signup failed`);
+        return response.json().then(errorData => {
+          throw new Error(errorData.error || `Error: ${response.status}`);
         });
       }
       return response.json();
     })
     .then(data => {
-      console.log('Signup successful:', data);
-      showSuccess();
-      form.reset();
+      // Show success message
+      form.style.display = 'none';
+      successMessage.style.display = 'block';
+      
+      // Redirect to login after 2 seconds
       setTimeout(() => {
         window.location.href = 'login.html';
       }, 2000);
     })
     .catch(error => {
-      console.error('Signup error:', error);
+      // Show error message
       const emailError = document.getElementById('emailError');
-      emailError.textContent = error.message || 'Failed to connect to server';
+      emailError.textContent = error.message || 'Failed to create account. Please try again.';
       emailError.classList.add('show');
-      emailInput.parentElement.classList.add('error');
+      emailInput.classList.add('error');
     });
   }
 });

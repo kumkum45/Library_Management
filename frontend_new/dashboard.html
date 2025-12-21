@@ -32,19 +32,10 @@
         </button>
         <ul class="dropdown__menu" role="menu" style="display: none;">
           <li><a href="#" class="dropdown__item" data-section="books">📖 Books</a></li>
-          <li><a href="#" class="dropdown__item" data-section="issued">📤 Issued Books</a></li>
+          <li><a href="#" class="dropdown__item" data-section="authors">✍️ Authors</a></li>
           <li><a href="#" class="dropdown__item" data-section="users">👥 Users</a></li>
-        </ul>
-      </div>
-
-      <div class="profile-menu">
-        <button class="profile-btn" id="profileBtn" aria-haspopup="true">
-          <span class="profile-icon">👤</span>
-          <span class="profile-name" id="profileName">User</span>
-        </button>
-        <ul class="profile-dropdown" id="profileDropdown" role="menu" style="display: none;">
-          <li><a href="#" class="profile-item" id="viewProfile">👤 View Profile</a></li>
-          <li><a href="#" class="profile-item" id="logoutBtn">🚪 Logout</a></li>
+          <li><hr style="margin: 8px 0;"></li>
+          <li><a href="#" class="dropdown__item" id="logoutBtn">🚪 Logout</a></li>
         </ul>
       </div>
     </div>
@@ -54,7 +45,10 @@
   <main class="dashboard">
     <!-- Books Section -->
     <section id="booksSection" class="section active" style="display: block;">
-      <h2 class="section__title">📖 Search Books</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 class="section__title">📖 Search Books</h2>
+        <button class="btn-add-book" id="addBookBtn">➕ Add Book</button>
+      </div>
       
       <div class="filters">
         <div class="filter-group">
@@ -100,25 +94,53 @@
         <button class="btn-reset" id="resetBooksBtn">Reset</button>
       </div>
 
+      <!-- View Controls -->
+      <div class="view-controls">
+        <div class="view-toggle-group">
+          <button class="view-toggle-btn active" id="viewListBtn" title="All Books">
+            <span>☰</span> All Books
+          </button>
+          <button class="view-toggle-btn" id="viewTableBtn" title="Available Books">
+            <span>≡</span> Available Books
+          </button>
+        </div>
+
+        <div class="sort-group">
+          <label for="sortBy">Sort by:</label>
+          <select id="sortBy" class="sort-select">
+            <option value="title">Title (A-Z)</option>
+            <option value="title-desc">Title (Z-A)</option>
+            <option value="author">Author (A-Z)</option>
+            <option value="category">Category</option>
+            <option value="status">Status</option>
+          </select>
+        </div>
+      </div>
+
       <div id="booksResults" class="results">
         <div class="loading" style="display: none;">Loading...</div>
         <div class="empty-state" style="display: none;">
           <p>No books found. Try adjusting your filters.</p>
         </div>
-        <div id="booksTable" class="table-container"></div>
+        <div id="booksContainer" class="books-grid"></div>
+        <div id="booksListContainer" class="books-list" style="display: none;"></div>
+        <div id="booksTable" class="table-container" style="display: none;"></div>
       </div>
     </section>
 
-    <!-- Issued Books Section -->
-    <section id="issuedSection" class="section" style="display: none;">
-      <h2 class="section__title">📤 Issued Books</h2>
+    <!-- Authors Section -->
+    <section id="authorsSection" class="section" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 class="section__title">✍️ Authors</h2>
+        <button class="btn-add-book" id="addAuthorBtn">➕ Add Author</button>
+      </div>
       
-      <div id="issuedResults" class="results">
+      <div id="authorsResults" class="results">
         <div class="loading" style="display: none;">Loading...</div>
         <div class="empty-state" style="display: none;">
-          <p>No issued books found.</p>
+          <p>No authors found. Add one to get started!</p>
         </div>
-        <div id="issuedTable" class="table-container"></div>
+        <div id="authorsContainer" class="authors-grid"></div>
       </div>
     </section>
 
@@ -143,8 +165,160 @@
         <div id="userDetailBody" class="modal__body"></div>
       </div>
     </div>
+
+    <!-- Add Book Modal -->
+    <div id="addBookModal" class="modal" style="display: none;">
+      <div class="modal__content modal__content--large">
+        <button class="modal__close" id="closeAddBookModal">&times;</button>
+        <h3 class="modal__title">➕ Add New Book</h3>
+        <form id="addBookForm" class="add-book-form">
+          <div class="form-group">
+            <label for="bookTitle">Book Title *</label>
+            <input type="text" id="bookTitle" class="form-control" placeholder="Enter book title" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="authorName">Author Name *</label>
+              <input type="text" id="authorName" class="form-control" placeholder="Enter author name" required>
+            </div>
+            <div class="form-group">
+              <label for="bookISBN">ISBN</label>
+              <input type="text" id="bookISBN" class="form-control" placeholder="e.g., 978-3-16-148410">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="bookCategory">Category *</label>
+              <input type="text" id="bookCategory" class="form-control" placeholder="e.g., Programming" required>
+            </div>
+            <div class="form-group">
+              <label for="bookStatus">Status *</label>
+              <select id="bookStatus" class="form-control" required>
+                <option value="">Select Status</option>
+                <option value="available">Available</option>
+                <option value="issued">Issued</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="bookDescription">Description</label>
+            <textarea id="bookDescription" class="form-control" placeholder="Book description" rows="4"></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-cancel" id="cancelAddBook">Cancel</button>
+            <button type="submit" class="btn-submit">Add Book</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit Book Modal -->
+    <div id="editBookModal" class="modal" style="display: none;">
+      <div class="modal__content modal__content--large">
+        <button class="modal__close" id="closeEditBookModal">&times;</button>
+        <h3 class="modal__title">✏️ Edit Book</h3>
+        <form id="editBookForm" class="add-book-form">
+          <input type="hidden" id="editBookId">
+          
+          <div class="form-group">
+            <label for="editBookTitle">Book Title *</label>
+            <input type="text" id="editBookTitle" class="form-control" placeholder="Enter book title" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="editAuthorName">Author Name *</label>
+              <input type="text" id="editAuthorName" class="form-control" placeholder="Enter author name" required>
+            </div>
+            <div class="form-group">
+              <label for="editBookISBN">ISBN</label>
+              <input type="text" id="editBookISBN" class="form-control" placeholder="e.g., 978-3-16-148410">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="editBookCategory">Category *</label>
+              <input type="text" id="editBookCategory" class="form-control" placeholder="e.g., Programming" required>
+            </div>
+            <div class="form-group">
+              <label for="editBookStatus">Status *</label>
+              <select id="editBookStatus" class="form-control" required>
+                <option value="">Select Status</option>
+                <option value="available">Available</option>
+                <option value="issued">Issued</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="editBookDescription">Description</label>
+            <textarea id="editBookDescription" class="form-control" placeholder="Book description" rows="4"></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-cancel" id="cancelEditBook">Cancel</button>
+            <button type="submit" class="btn-submit">Update Book</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add Author Modal -->
+    <div id="addAuthorModal" class="modal" style="display: none;">
+      <div class="modal__content">
+        <button class="modal__close" id="closeAddAuthorModal">&times;</button>
+        <h3 class="modal__title">➕ Add New Author</h3>
+        <form id="addAuthorForm" class="add-book-form">
+          <div class="form-group">
+            <label for="authorNameInput">Author Name *</label>
+            <input type="text" id="authorNameInput" class="form-control" placeholder="Enter author name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="authorBio">Bio</label>
+            <textarea id="authorBio" class="form-control" placeholder="Author biography" rows="4"></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-cancel" id="cancelAddAuthor">Cancel</button>
+            <button type="submit" class="btn-submit">Add Author</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit Author Modal -->
+    <div id="editAuthorModal" class="modal" style="display: none;">
+      <div class="modal__content">
+        <button class="modal__close" id="closeEditAuthorModal">&times;</button>
+        <h3 class="modal__title">✏️ Edit Author</h3>
+        <form id="editAuthorForm" class="add-book-form">
+          <input type="hidden" id="editAuthorId">
+          
+          <div class="form-group">
+            <label for="editAuthorNameInput">Author Name *</label>
+            <input type="text" id="editAuthorNameInput" class="form-control" placeholder="Enter author name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="editAuthorBio">Bio</label>
+            <textarea id="editAuthorBio" class="form-control" placeholder="Author biography" rows="4"></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-cancel" id="cancelEditAuthor">Cancel</button>
+            <button type="submit" class="btn-submit">Update Author</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </main>
 
-  <script src="dashboard.js"></script>
+  <script src="dashboard.js?v=1"></script>
 </body>
 </html>

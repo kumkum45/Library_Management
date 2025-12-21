@@ -76,27 +76,47 @@ form.addEventListener('submit', async (e) => {
   submitBtn.textContent = 'Signing in...';
 
   try {
-    // FOR NOW: Direct redirect without backend call
-    // Store dummy user data
-    localStorage.setItem('authToken', 'dummy-token-for-testing');
-    localStorage.setItem('user', JSON.stringify({
-      id: 1,
-      name: email.split('@')[0],
-      email: email,
-      role: 'user'
-    }));
+    // Make actual API call to backend
+    const response = await fetch(`${API_BASE_URL}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
+    });
 
-    showSuccess('Login successful! Redirecting...');
+    console.log('Login response status:', response.status);
+    console.log('Login response ok:', response.ok);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Login error response:', errorData);
+      throw new Error(errorData.error || 'Login failed');
+    }
+
+    const data = await response.json();
+    console.log('Login response data:', data);
+    console.log('Token from backend:', data.token);
+    console.log('User from backend:', data.user);
+
+    // Store token and user in localStorage
+    localStorage.setItem('authToken', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+
+    // Verify it was stored
+    console.log('Token stored in localStorage:', localStorage.getItem('authToken'));
+    console.log('User stored in localStorage:', localStorage.getItem('user'));
+
+    showSuccess('Login successful! Redirecting to dashboard...');
     
-    // Redirect to dashboard after 1.5 seconds
+    // Redirect to dashboard after 1.5 seconds with cache buster
     setTimeout(() => {
-      window.location.href = 'dashboard.html';
+      window.location.href = 'dashboard.html?v=' + new Date().getTime();
     }, 1500);
   } catch (error) {
     console.error('Login error:', error);
-    showError('An error occurred. Please check your connection and try again.');
+    showError(error.message || 'An error occurred. Please check your connection and try again.');
   } finally {
-    
     submitBtn.disabled = false;
     submitBtn.textContent = originalText;
   }
