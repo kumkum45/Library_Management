@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import secrets
 import time
+import traceback
 
 from flask import jsonify, request, g, current_app
 from functools import wraps
@@ -118,6 +119,7 @@ def register_auth_routes(app):
             except IntegrityError as e:
                 session.rollback()
                 session.close()
+                print(f"Integrity Error: {str(e)}")
                 # Check if it's email duplicate
                 if "unique" in str(e).lower() or "email" in str(e).lower():
                     return jsonify({"error": "Email already exists"}), 400
@@ -126,12 +128,14 @@ def register_auth_routes(app):
                 session.rollback()
                 session.close()
                 print(f"Database error during signup: {str(e)}")
-                return jsonify({"error": "Database error during signup"}), 500
+                traceback.print_exc()
+                return jsonify({"error": f"Database error: {str(e)}"}), 500
 
             session.close()
             return jsonify({"message": "Signup successful. Please login to get a token"}), 201
         except Exception as e:
             print(f"Unexpected error in signup: {str(e)}")
+            traceback.print_exc()
             return jsonify({"error": f"Server error: {str(e)}"}), 500
 
     @app.route("/login", methods=["POST"])

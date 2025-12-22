@@ -1,11 +1,10 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, CheckConstraint
-from sqlalchemy.orm import relationship,sessionmaker, declarative_base
+from sqlalchemy.orm import relationship, sessionmaker
 from database import engine
 from database import Base
-Session=sessionmaker(bind=engine)
-session=Session()
 
-Base=declarative_base()
+Session = sessionmaker(bind=engine)
+session = Session()
 
 
 class Book(Base):

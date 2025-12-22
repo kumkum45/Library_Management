@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 import os
 from dotenv import load_dotenv
+import traceback
 
 
 from sqlalchemy.orm import sessionmaker
@@ -29,16 +30,19 @@ try:
     print("✓ Database tables created/verified successfully!")
 except Exception as e:
     print(f"⚠ Warning: Could not create database tables: {str(e)}")
+    traceback.print_exc()
 
 # Global error handler for uncaught exceptions
 @app.errorhandler(500)
 def internal_error(error):
     print(f"500 Error: {str(error)}")
-    return jsonify({"error": "Internal server error"}), 500
+    traceback.print_exc()
+    return jsonify({"error": "Internal server error", "details": str(error)}), 500
 
 @app.errorhandler(Exception)
 def handle_exception(error):
     print(f"Exception: {str(error)}")
+    traceback.print_exc()
     return jsonify({"error": str(error)}), 500
 
 register_auth_routes(app)
