@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
       submitSignup();
     }
   });
+  
+  // Updated to use deployed backend
 
   // Real-time validation on blur
   nameInput.addEventListener('blur', validateName);
