@@ -1,5 +1,5 @@
 // API Base URL (adjust based on your backend)
-const API_BASE_URL = 'http://127.0.0.1:5000';
+const API_BASE_URL = 'https://library-management-lawg.onrender.com';
 
 const form = document.getElementById('loginForm');
 const emailInput = document.getElementById('email');
