@@ -47,7 +47,7 @@ async function fetchWithToken(url, options = {}) {
     console.error('Fetch error:', error);
     console.error('Error message:', error.message);
     console.error('URL attempted:', url);
-    console.error('Make sure backend is running at http://127.0.0.1:5000');
+    console.error('Make sure backend is running at https://library-management-lawg.onrender.com');
     throw error;
   }
 }
