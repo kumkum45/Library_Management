@@ -15,8 +15,8 @@ from auth.token import register_auth_routes
 load_dotenv()
 
 app = Flask(__name__)
-# Enable CORS for all origins (for development)
-CORS(app)
+# Enable CORS for all origins with proper configuration
+CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
 # Load SECRET_KEY from environment; fail fast if missing to avoid token mismatches
 secret = os.environ.get('SECRET_KEY')
 if not secret:
