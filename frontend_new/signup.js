@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
+  const API_BASE_URL = 'https://library-management-lawg.onrender.com';
+  
   const form = document.getElementById('signupForm');
   const nameInput = document.getElementById('name');
   const emailInput = document.getElementById('email');
@@ -16,8 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   
-  // Updated to use deployed backend
-
   // Real-time validation on blur
   nameInput.addEventListener('blur', validateName);
   emailInput.addEventListener('blur', validateEmail);
@@ -121,9 +121,12 @@ document.addEventListener('DOMContentLoaded', () => {
       role: roleInput.value
     };
 
-    const backendUrl = 'https://library-management-lawg.onrender.com/signup';
+    const signupUrl = `${API_BASE_URL}/signup`;
+    
+    console.log('Submitting signup to:', signupUrl);
+    console.log('Data:', signupData);
 
-    fetch(backendUrl, {
+    fetch(signupUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -131,14 +134,23 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify(signupData)
     })
     .then(response => {
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
       if (!response.ok) {
         return response.json().then(errorData => {
-          throw new Error(errorData.error || `Error: ${response.status}`);
+          console.error('Backend error:', errorData);
+          throw new Error(errorData.error || errorData.details || `Error: ${response.status}`);
+        }).catch(e => {
+          // If response is not JSON
+          console.error('Error parsing response:', e);
+          throw new Error(`Server error: ${response.status}`);
         });
       }
       return response.json();
     })
     .then(data => {
+      console.log('Signup success:', data);
       // Show success message
       form.style.display = 'none';
       successMessage.style.display = 'block';
@@ -149,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 2000);
     })
     .catch(error => {
+      console.error('Signup error:', error);
       // Show error message
       const emailError = document.getElementById('emailError');
       emailError.textContent = error.message || 'Failed to create account. Please try again.';
