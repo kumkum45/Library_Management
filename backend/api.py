@@ -64,6 +64,28 @@ def register_routes(app):
         return jsonify(result)
     
 
+    @app.route("/books", methods=["GET"])
+    @token_required
+    def get_books():
+        session = SessionLocal()
+        books = session.query(Book).options(joinedload(Book.author)).all()
+        
+        result = [
+            {
+                "id": b.id,
+                "title": b.title,
+                "category": b.category,
+                "status": b.status,
+                "author_id": b.author_id,
+                "author_name": b.author.name if b.author else None,
+                "isbn": b.isbn
+            }
+            for b in books
+        ]
+        
+        session.close()
+        return jsonify(result)
+
     @app.route("/books", methods=["POST"])
     @token_required
     def add_book():
@@ -72,12 +94,28 @@ def register_routes(app):
 
         title = data.get("title")
         category = data.get("category")
-        author_id = data.get("author_id")
         isbn = data.get("isbn")
+        
+        # Accept either author_id or author_name
+        author_id = data.get("author_id")
+        author_name = data.get("author_name")
 
-        if not title or not category or not author_id or not isbn:
+        if not title or not category or not isbn:
             session.close()
-            return jsonify({"error": "title, category, author_id, and isbn are required"}), 400
+            return jsonify({"error": "title, category, and isbn are required"}), 400
+
+        # If author_name is provided instead of author_id, look it up
+        if author_name and not author_id:
+            author = session.query(Author).filter(Author.name.ilike(author_name)).first()
+            if author:
+                author_id = author.id
+            else:
+                session.close()
+                return jsonify({"error": f"Author '{author_name}' not found"}), 404
+        
+        if not author_id:
+            session.close()
+            return jsonify({"error": "author_id or author_name is required"}), 400
 
         new_book = Book(
             title=title,

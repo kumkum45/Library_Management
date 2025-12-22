@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
 import os
 from dotenv import load_dotenv
 
@@ -14,6 +15,8 @@ from auth.token import register_auth_routes
 load_dotenv()
 
 app = Flask(__name__)
+# Enable CORS for all origins (for development)
+CORS(app)
 # Load SECRET_KEY from environment; fail fast if missing to avoid token mismatches
 secret = os.environ.get('SECRET_KEY')
 if not secret:

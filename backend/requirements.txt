@@ -1,6 +1,8 @@
 Flask
+Flask-CORS
 SQLAlchemy
 psycopg2-binary
 Werkzeug
 PyJWT
 python-dotenv
+Flask-CORS
