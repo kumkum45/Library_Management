@@ -8,7 +8,7 @@ import traceback
 from flask import jsonify, request, g, current_app
 from functools import wraps
 import jwt
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import sessionmaker
 
 from database import engine
