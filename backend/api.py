@@ -173,6 +173,26 @@ def register_routes(app):
         session.close()
         return jsonify({"message": "Author added successfully!"})
     
+    @app.route("/authors/<int:author_id>", methods=["PUT"])
+    @token_required
+    def update_author(author_id):
+        data = request.get_json()
+        session = SessionLocal()
+        author = session.query(Author).get(author_id)
+        
+        if not author:
+            session.close()
+            return jsonify({"message": "Author not found"}), 404
+        
+        if "name" in data:
+            author.name = data["name"]
+        if "bio" in data:
+            author.bio = data["bio"]
+        
+        session.commit()
+        session.close()
+        return jsonify({"message": "Author updated successfully!"})
+    
     @app.route("/authors/<int:author_id>", methods=["DELETE"])
     @token_required
     def delete_author(author_id):
