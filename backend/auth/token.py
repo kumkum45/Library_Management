@@ -90,74 +90,96 @@ def token_required(f):
 def register_auth_routes(app):
     @app.route("/signup", methods=["POST"])
     def signup():
-        data = request.get_json()
-        session = SessionLocal()
-
-        name = data.get("name")
-        email = data.get("email")
-        password = data.get("password")
-        role = data.get("role", "user").lower()
-
-        if not name or not email or not password:
-            session.close()
-            return jsonify({"error": "Name, email and password are required"}), 400
-        if role not in ("user", "admin"):
-            session.close()
-            return jsonify({"error": "Invalid role. Must be 'user' or 'admin'"}), 400
-
-        pw_hash = hash_password(password)
-        new_user = User(name=name, email=email, password=pw_hash, role=role)
-
-        session.add(new_user)
         try:
-            session.commit()
-        except IntegrityError:
-            session.rollback()
-            session.close()
-            return jsonify({"error": "Email already exists"}), 400
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No JSON data provided"}), 400
+                
+            session = SessionLocal()
 
-        session.close()
-        return jsonify({"message": "Signup successful. Please login to get a token"}), 201
+            name = data.get("name")
+            email = data.get("email")
+            password = data.get("password")
+            role = data.get("role", "user").lower()
+
+            if not name or not email or not password:
+                session.close()
+                return jsonify({"error": "Name, email and password are required"}), 400
+            if role not in ("user", "admin"):
+                session.close()
+                return jsonify({"error": "Invalid role. Must be 'user' or 'admin'"}), 400
+
+            pw_hash = hash_password(password)
+            new_user = User(name=name, email=email, password=pw_hash, role=role)
+
+            session.add(new_user)
+            try:
+                session.commit()
+            except IntegrityError as e:
+                session.rollback()
+                session.close()
+                # Check if it's email duplicate
+                if "unique" in str(e).lower() or "email" in str(e).lower():
+                    return jsonify({"error": "Email already exists"}), 400
+                return jsonify({"error": "Database constraint violation"}), 400
+            except Exception as e:
+                session.rollback()
+                session.close()
+                print(f"Database error during signup: {str(e)}")
+                return jsonify({"error": "Database error during signup"}), 500
+
+            session.close()
+            return jsonify({"message": "Signup successful. Please login to get a token"}), 201
+        except Exception as e:
+            print(f"Unexpected error in signup: {str(e)}")
+            return jsonify({"error": f"Server error: {str(e)}"}), 500
 
     @app.route("/login", methods=["POST"])
     def login():
-        data = request.get_json()
-        session = SessionLocal()
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No JSON data provided"}), 400
+            
+            session = SessionLocal()
 
-        email = data.get("email")
-        password = data.get("password")
-        if not email or not password:
+            email = data.get("email")
+            password = data.get("password")
+            if not email or not password:
+                session.close()
+                return jsonify({"error": "Email and password are required"}), 400
+
+            user = session.query(User).filter(User.email == email).first()
+            if not user:
+                session.close()
+                return jsonify({"error": "Invalid credentials"}), 401
+
+            if not verify_password(user.password, password):
+                session.close()
+                return jsonify({"error": "Invalid credentials"}), 401
+
+            secret = current_app.config.get("SECRET_KEY")
+            if not secret:
+                session.close()
+                return jsonify({"error": "Server configuration error: SECRET_KEY not found"}), 500
+            token = generate_access_token(user, secret)
+
+            result = {
+                "message": "Login successful",
+                "token": token,
+                "user": {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                    "role": user.role,
+                },
+            }
+
             session.close()
-            return jsonify({"error": "Email and password are required"}), 400
-
-        user = session.query(User).filter(User.email == email).first()
-        if not user:
-            session.close()
-            return jsonify({"error": "Invalid credentials"}), 401
-
-        if not verify_password(user.password, password):
-            session.close()
-            return jsonify({"error": "Invalid credentials"}), 401
-
-        secret = current_app.config.get("SECRET_KEY")
-        if not secret:
-            session.close()
-            return jsonify({"error": "Server configuration error: SECRET_KEY not found"}), 500
-        token = generate_access_token(user, secret)
-
-        result = {
-            "message": "Login successful",
-            "token": token,
-            "user": {
-                "id": user.id,
-                "name": user.name,
-                "email": user.email,
-                "role": user.role,
-            },
-        }
-
-        session.close()
-        return jsonify(result)
+            return jsonify(result)
+        except Exception as e:
+            print(f"Unexpected error in login: {str(e)}")
+            return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
 __all__ = [

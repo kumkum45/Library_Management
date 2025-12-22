@@ -12,7 +12,7 @@ Your Library Management System uses JWT (JSON Web Token) based authentication. A
 // User logs in via login.html
 // Backend returns token and user data
 
-const response = await fetch('http://127.0.0.1:5000/login', {
+const response = await fetch('https://library-management-lawg.onrender.com/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ email, password })
@@ -38,7 +38,7 @@ JSON.parse(localStorage.getItem('user'));
 ### 3. **Using Token for API Calls**
 ```javascript
 // Use the built-in fetchWithToken() helper in dashboard.js
-const response = await fetchWithToken('http://127.0.0.1:5000/books/search', {
+const response = await fetchWithToken('https://library-management-lawg.onrender.com/books/search', {
   method: 'GET'
 });
 
